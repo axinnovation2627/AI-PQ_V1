@@ -1,0 +1,12 @@
+# Python 3.13 에서 설치·테스트한 버전 (테스트 87개 통과)
+fastapi==0.142.2
+uvicorn==0.54.0
+python-multipart==0.0.32
+google-genai==2.28.0
+python-dotenv==1.2.4
+PyYAML==6.0.3
+PyMuPDF==1.28.2
+openpyxl==3.1.5
+# 테스트용
+pytest==9.1.1
+httpx==0.28.1

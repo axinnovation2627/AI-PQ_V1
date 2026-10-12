@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PQ 경력평가</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <span class="mark">PQ</span>
+    <div>
+      <h1>경력평가 검토대</h1>
+      <p id="crit"></p>
+    </div>
+  </div>
+  <nav class="topnav" aria-label="메뉴">
+    <button data-go="list" class="on">평가 목록</button>
+    <button data-go="rules">평가기준 편집</button>
+    <button data-go="scores">점수 편집</button>
+  </nav>
+</header>
+
+<main>
+  <!-- 목록 -->
+  <section id="view-list" class="card">
+    <div class="head">
+      <h2>평가 목록</h2>
+      <button id="btn-new" class="btn primary">＋ 새 평가</button>
+    </div>
+    <table id="list" class="grid">
+      <thead><tr><th>생성</th><th>성명</th><th>소속</th><th>참여형태</th><th>상태</th><th class="r">환산년수</th><th class="r">확인필요</th><th></th></tr></thead>
+      <tbody></tbody>
+    </table>
+    <p id="empty" class="empty" hidden>아직 평가가 없습니다. <b>＋ 새 평가</b>로 경력증명서를 올려 주세요.</p>
+  </section>
+
+  <!-- 업로드 -->
+  <section id="view-upload" class="card narrow" hidden>
+    <div class="head"><h2>새 평가</h2></div>
+    <form id="form">
+      <label class="drop">
+        <input type="file" name="file" accept="application/pdf" required>
+        <span class="drop-t">경력증명서 PDF 선택</span>
+        <span class="drop-s">한국건설기술인협회 발급 건설기술인 경력증명서(스캔본)</span>
+      </label>
+      <div class="fields">
+        <label>성명(마스킹) <input name="name" placeholder="예: 기술인A"></label>
+        <label>소속 <input name="org" placeholder="예: (주)가나엔지니어링"></label>
+        <label>참여형태
+          <select name="role">
+            <option value="">선택 안 함 (3개 모두 표시)</option>
+            <option>사업책임</option><option>분야책임</option><option>분야참여</option>
+          </select>
+        </label>
+      </div>
+      <p class="notice">판독을 위해 쪽 이미지가 Gemini(Google) API로 전송됩니다. 마스킹한 PDF 사용을 권장합니다.</p>
+      <p id="key-warn" class="error" hidden>GEMINI_API_KEY가 설정되지 않았습니다. 프로그램 폴더의 .env 파일에 키를 넣고 다시 실행하세요.</p>
+      <p id="form-error" class="error" hidden></p>
+      <div class="actions">
+        <button type="button" id="btn-cancel" class="btn">취소</button>
+        <button type="submit" class="btn primary" id="btn-start">판독 시작</button>
+      </div>
+    </form>
+  </section>
+
+  <!-- AI 평가 결과 -->
+  <section id="view-detail" class="card" hidden>
+    <div class="head">
+      <h2 id="d-title"></h2>
+      <button id="btn-back" class="btn ghost">‹ 목록</button>
+    </div>
+    <div id="progress">
+      <p id="d-stage" class="stage"></p>
+      <div class="meter"><div id="d-meter"></div></div>
+      <p id="d-failed" class="error" hidden></p>
+      <p id="retry-box" hidden><button id="btn-retry" class="btn">실패 쪽 다시 읽기</button>
+        <span class="muted">성공한 쪽은 그대로 두고 실패한 쪽만 다시 판독한 뒤 엑셀을 새로 만듭니다.</span></p>
+    </div>
+    <div id="result" hidden>
+      <div class="tiles">
+        <div class="tile t-sim"><span>유사</span><b id="r-sim"></b></div>
+        <div class="tile t-rel"><span>관련</span><b id="r-rel"></b></div>
+        <div class="tile t-no"><span>불인정</span><b id="r-no"></b></div>
+        <div class="tile t-yr"><span>환산 경력</span><b id="r-years"></b></div>
+        <div class="tile t-flag"><span>확인필요</span><b id="r-flag"></b></div>
+      </div>
+      <div class="cols">
+        <div>
+          <h3>경력 점수 (AI)</h3>
+          <table id="scores" class="grid compact"><thead><tr><th>참여형태</th><th class="r">점수</th></tr></thead><tbody></tbody></table>
+        </div>
+        <div>
+          <h3>판독 검증 <small id="r-check" class="muted"></small></h3>
+          <div class="scroll-y">
+            <table id="check" class="grid compact"><thead><tr><th>공사종류</th><th class="r">판독</th><th class="r">증명서</th><th class="r">행</th><th>상태</th></tr></thead><tbody></tbody></table>
+          </div>
+        </div>
+      </div>
+      <ul id="r-errors" class="error"></ul>
+      <div class="actions left">
+        <button id="btn-review" class="btn primary">평가위원 평가하기 ›</button>
+        <a id="r-excel" class="btn">AI 평가시트 엑셀</a>
+        <a id="r-excel-review" class="btn">평가위원 반영 엑셀</a>
+        <button id="btn-rejudge" class="btn ghost" title="판독은 그대로 두고 지금 평가기준으로 판정·점수·엑셀을 다시 만듭니다">현재 기준으로 다시 판정</button>
+      </div>
+      <p id="rejudge-msg" class="muted small" hidden></p>
+    </div>
+    <p id="d-error" class="error" hidden></p>
+  </section>
+
+  <!-- 평가위원 평가 -->
+  <section id="view-review" class="sheet" hidden>
+    <div class="sheet-head">
+      <div>
+        <p class="eyebrow">나. 참여기술인 경력 · 평가위원 평가</p>
+        <h2 id="rv-title"></h2>
+      </div>
+      <div class="actions">
+        <button id="rv-back" class="btn ghost">‹ AI 평가 결과</button>
+        <a id="rv-excel" class="btn primary">평가위원 반영 엑셀</a>
+      </div>
+    </div>
+
+    <div class="info-grid">
+      <div class="panel">
+        <h3>일반 사항</h3>
+        <dl id="rv-general"></dl>
+      </div>
+      <div class="panel">
+        <h3>경력 요약 <small class="muted">AI ↔ 평가위원</small></h3>
+        <table class="grid compact summary" id="rv-summary">
+          <thead><tr><th></th><th class="r">인정일</th><th class="r">환산일수</th><th class="r">환산년수</th><th class="r">사업책임</th><th class="r">분야책임</th><th class="r">분야참여</th></tr></thead>
+          <tbody></tbody>
+        </table>
+        <p class="muted small" id="rv-rate-note"></p>
+      </div>
+    </div>
+
+    <div class="toolbar" id="rv-toolbar">
+      <div class="seg" id="rv-view" role="group" aria-label="보기 방식">
+        <button data-v="card" class="on">카드 보기</button><button data-v="table">표 보기</button>
+      </div>
+      <label class="selall" id="rv-selall"><input type="checkbox" class="rv-all" aria-label="보이는 행 전체 선택"> 전체 선택</label>
+      <label class="reviewer">평가위원 <input id="rv-name" placeholder="이름"></label>
+      <div class="chips" id="rv-filters">
+        <button data-f="all" class="on">전체 <i></i></button>
+        <button data-f="ok">유사·관련 <i></i></button>
+        <button data-f="flag">확인필요 <i></i></button>
+        <button data-f="no">불인정 <i></i></button>
+        <button data-f="todo">미평가 <i></i></button>
+        <button data-f="diff">AI와 다름 <i></i></button>
+      </div>
+      <span class="grow"></span>
+      <span id="rv-progress" class="muted"></span>
+      <span id="rv-saved" class="saved"></span>
+      <button id="rv-accept" class="btn">AI 판단 일괄 동의 (빈칸만)</button>
+    </div>
+
+    <div class="bulkbar" id="rv-bulk" hidden>
+      <b id="bk-count"></b>
+      <button data-bk="ai" class="btn sm">AI대로</button>
+      <span class="sep"></span>
+      <button data-bk="유사" class="btn sm c-sim">유사</button>
+      <button data-bk="관련" class="btn sm c-rel">관련</button>
+      <button data-bk="불인정" class="btn sm c-no">불인정</button>
+      <select id="bk-rate" aria-label="일괄 인정율">
+        <option value="auto">인정율: 자동(사업명 판정)</option>
+        <option value="1">100%</option><option value="0.6">60%</option>
+        <option value="0.5">50%</option><option value="0.3">30%</option>
+      </select>
+      <input id="bk-reason" placeholder="공통 판단사유(선택)">
+      <span class="sep"></span>
+      <button data-bk="clear" class="btn sm ghost">입력 지우기</button>
+      <button data-bk="none" class="btn sm ghost">선택 해제</button>
+    </div>
+
+    <div class="cards" id="rv-cards" hidden></div>
+    <div class="cards-foot" id="rv-cards-foot" hidden></div>
+
+    <div class="table-wrap" id="rv-table-wrap">
+      <table id="rv-table" class="sheet-table">
+        <thead>
+          <tr class="group">
+            <th colspan="2" class="g-sel"></th>
+            <th colspan="15" class="g-ai">AI 판정 · 평가시트 A~O열</th>
+            <th colspan="4" class="g-rv">PQ 평가위원 평가</th>
+          </tr>
+          <tr>
+            <th class="c-chk"><input type="checkbox" class="rv-all" aria-label="보이는 행 전체 선택"></th>
+            <th class="c-pg">쪽</th>
+            <th class="c-area">용역유형</th><th class="c-name">사업명</th><th class="c-sum">공사(용역)개요</th>
+            <th>시작일</th><th>종료일</th><th class="r">인정일</th><th class="c-org">발주청</th><th class="c-kind">공사종류</th>
+            <th>직무</th><th class="c-spec">전문분야</th><th class="c-job">담당업무</th>
+            <th class="ai">AI 인정여부</th><th class="ai r">인정율</th><th class="ai r">환산일수</th><th class="ai c-why">AI 판단 근거</th>
+            <th class="rv">인정여부</th><th class="rv">인정율</th><th class="rv r">환산일수</th><th class="rv c-reason">판단사유</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+        <tfoot></tfoot>
+      </table>
+    </div>
+
+    <div class="panel notes">
+      <h3>판정 방법 · 기준 · 판독 검증</h3>
+      <div id="rv-notes"></div>
+    </div>
+  </section>
+  <!-- 평가기준 편집 / 점수 편집 (같은 틀) -->
+  <section id="view-rules" class="sheet" hidden>
+    <div class="sheet-head">
+      <div><p class="eyebrow">판정 규칙</p><h2>평가기준 편집</h2>
+        <p class="muted small">AI 판정(유사·관련·불인정)에 쓰는 단어와 조항 문구입니다. 단어를 추가·삭제하고 저장하면 새 평가부터 바로 적용됩니다.</p></div>
+    </div>
+    <div class="ed-bar" data-ed="rules"></div>
+    <div id="rules-body" class="ed-body"></div>
+  </section>
+
+  <section id="view-scores" class="sheet" hidden>
+    <div class="sheet-head">
+      <div><p class="eyebrow">점수 계산</p><h2>점수 편집</h2>
+        <p class="muted small">인정율, 참여형태별 배점표, 일→년 환산일수입니다. 저장하면 새 평가와 엑셀 수식에 바로 적용됩니다.</p></div>
+    </div>
+    <div class="ed-bar" data-ed="scores"></div>
+    <div id="scores-body" class="ed-body"></div>
+  </section>
+</main>
+
+<aside id="drawer" class="drawer" hidden>
+  <div class="drawer-head">
+    <p id="rv-page-cap"></p>
+    <button id="drawer-close" class="btn ghost sm" aria-label="닫기">✕</button>
+  </div>
+  <div class="drawer-body"><img id="rv-page-img" alt=""></div>
+</aside>
+
+<script src="/static/app.js"></script>
+<script src="/static/review.js"></script>
+<script src="/static/criteria.js"></script>
+</body>
+</html>
