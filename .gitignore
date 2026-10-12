@@ -6,3 +6,6 @@ __pycache__/
 .venv/
 criteria/backup/
 .vercel/
+
+.vercel
+.env*
