@@ -44,7 +44,7 @@ PDF 업로드 → 쪽 이미지(150dpi) → Gemini 쪽별 판독(JSON, 여러 �
 | PDF·판독 | PyMuPDF(쪽 이미지), Google Gemini API(google-genai) |
 | 엑셀 | openpyxl |
 | 평가기준 | YAML (`criteria/2026_비탈면옹벽.yaml`) |
-| 테스트 | pytest 87개 |
+| 테스트 | pytest 89개 |
 
 라이브러리 목록과 버전(SBOM): `requirements.txt`
 
@@ -62,7 +62,7 @@ PDF 업로드 → 쪽 이미지(150dpi) → Gemini 쪽별 판독(JSON, 여러 �
 
 ## 6. 바이브코딩으로 만든 과정
 
-기획자가 말로 지시하고, 코드는 Claude Code가 작성했습니다. 2일, 커밋 26회, 코드 약 4,100줄, 자동 테스트 87개.
+기획자가 말로 지시하고, 코드는 Claude Code가 작성했습니다. 2일, 커밋 26회, 코드 약 4,100줄, 자동 테스트 89개.
 
 1. 평가기준(hwpx) 원문을 일반사항·세부사항·항목별로 매핑 — 임의 해석 없이 원문 그대로
 2. 참여기술인 2명을 사람이 직접 평가해 정답지 작성
@@ -86,11 +86,15 @@ PDF 업로드 → 쪽 이미지(150dpi) → Gemini 쪽별 판독(JSON, 여러 �
 | 문서·테스트 속 성명·회사명·근무 이력 | 익명화 | 기술인A·B, (주)가나엔지니어링 등 가상 이름으로 교체 |
 | `requirements.txt` | 버전 고정 | 실제 설치·테스트한 버전 (SBOM) |
 
-## 8. 설명자료 페이지 (Vercel 배포)
+## 8. 체험판 (Vercel 배포)
 
-`site/index.html` 은 A4 2쪽 설명자료입니다. Vercel에는 이 페이지와 비밀번호 화면(`middleware.js`)만 올라가고
-(`.vercelignore`), 소스코드는 올라가지 않습니다. 비밀번호 원문은 저장소에 없고, Vercel 환경변수
-`PAGE_PASSWORD_SHA256` 에 비밀번호의 SHA-256 값만 넣습니다.
+Vercel에는 **체험판**이 올라갑니다 (`api/index.py`, 환경변수 `PQ_DEMO=1`).
+
+- 가상 기술인 1명의 예시 평가(`demo/`, `tools/make_demo.py`로 생성)를 보여 줍니다. 실제 인물·용역이 아닙니다.
+- 평가위원 화면, 카드·표 보기, 엑셀 내려받기, 평가기준·점수 편집, 다시 판정을 직접 눌러 볼 수 있습니다.
+- PDF 업로드·Gemini 판독은 꺼져 있습니다(개인정보·API 요금). 평가위원 입력·기준 수정은 서버 임시 폴더에만 저장되어 잠시 뒤 처음 상태로 돌아갑니다.
+- 접속 비밀번호 화면은 `middleware.js` 입니다. 비밀번호 원문은 저장소에 없고, Vercel 환경변수 `PAGE_PASSWORD_SHA256` 에 SHA-256 값만 넣습니다.
+- 2쪽 설명자료: `/about` (`site/index.html`)
 
 ## 9. 폴더 구성
 
@@ -100,12 +104,15 @@ PQ경력평가웹/
 ├── run.bat                ← 실행
 ├── requirements.txt       ← 라이브러리(SBOM)
 ├── .env.example           ← 설정 템플릿 (.env 로 복사)
-├── site/                ← 설명자료 페이지 (Vercel)
+├── api/index.py         ← Vercel 체험판 진입점
+├── demo/                ← 체험판 예시 평가 (가상)
+├── tools/make_demo.py   ← 예시 평가 만들기
+├── site/                ← 설명자료 (/about)
 ├── middleware.js        ← 설명자료 비밀번호 화면
 ├── criteria/              ← 평가기준 (규칙·어휘·인정율·배점)
 ├── pqweb/                 ← 서버·판독·판정·엑셀 (Python)
 │   └── web/               ← 화면 (HTML·CSS·JS)
-├── tests/                 ← 자동 테스트 87개
+├── tests/                 ← 자동 테스트 89개
 └── docs/                  ← 설계·구현 계획
 ```
 

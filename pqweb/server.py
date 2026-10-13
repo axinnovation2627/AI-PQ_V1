@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import os
+import shutil
+import tempfile
 import threading
 from pathlib import Path
 
@@ -23,6 +25,21 @@ WEB = Path(__file__).parent / "web"
 app = FastAPI(title="PQ 경력평가")
 app.state.base = store.BASE
 app.state.crit_path = criteria_mod.DEFAULT
+
+# 체험판(PQ_DEMO=1): 가상 예시 평가만 보여 주고 PDF 업로드·Gemini 판독은 막는다.
+# 서버리스 환경은 프로그램 폴더에 쓸 수 없으므로 예시 자료와 평가기준을 임시 폴더에 복사해 쓴다
+# (평가위원 입력·기준 수정은 임시로만 저장되고, 서버가 다시 시작되면 처음 상태로 돌아간다).
+DEMO = os.getenv("PQ_DEMO") == "1"
+DEMO_MSG = "체험판에서는 PDF 업로드·판독을 할 수 없습니다. 예시 평가로 화면을 체험해 보세요."
+if DEMO:
+    _tmp = Path(tempfile.gettempdir()) / "pq-demo"
+    if not (_tmp / "evaluations").exists():
+        shutil.copytree(ROOT / "demo" / "evaluations", _tmp / "evaluations")
+    (_tmp / "criteria").mkdir(parents=True, exist_ok=True)
+    if not (_tmp / "criteria" / criteria_mod.DEFAULT.name).exists():
+        shutil.copy2(criteria_mod.DEFAULT, _tmp / "criteria" / criteria_mod.DEFAULT.name)
+    app.state.base = _tmp / "evaluations"
+    app.state.crit_path = _tmp / "criteria" / criteria_mod.DEFAULT.name
 app.state.crit = load_criteria(app.state.crit_path)
 
 
@@ -65,8 +82,11 @@ app.state.run_async = True
 
 @app.get("/api/config")
 def config():
+    if DEMO:
+        return {"gemini_ready": False, "demo": True, "model": "체험판(판독 없음)",
+                "criteria": app.state.crit["이름"], "roles": list(ROLES)}
     return {"gemini_ready": bool(os.getenv("GEMINI_API_KEY")) or app.state.make_caller is not _make_caller,
-            "model": _model(), "criteria": app.state.crit["이름"], "roles": list(ROLES)}
+            "model": _model(), "criteria": app.state.crit["이름"], "roles": list(ROLES), "demo": False}
 
 
 @app.get("/api/evaluations")
@@ -77,6 +97,8 @@ def evaluations():
 @app.post("/api/evaluations")
 async def create(file: UploadFile = File(...), name: str = Form(""), org: str = Form(""),
                  role: str = Form("")):
+    if DEMO:
+        raise HTTPException(403, DEMO_MSG)
     data = await file.read()
     if not data.startswith(b"%PDF"):
         raise HTTPException(400, "PDF 파일이 아닙니다.")
@@ -167,6 +189,8 @@ def criteria_restore(body: dict = Body(...)):
 @app.post("/api/evaluations/{eval_id}/retry")
 def retry(eval_id: str):
     """판독 실패 쪽만 다시 읽고 판정·엑셀을 새로 만든다."""
+    if DEMO:
+        raise HTTPException(403, DEMO_MSG)
     d = _dir(eval_id)
     st = store.read_json(d / "status.json", {})
     if st.get("단계") not in ("완료", "오류"):
@@ -284,6 +308,15 @@ async def no_cache_for_screens(request, call_next):
 
 
 app.mount("/static", StaticFiles(directory=WEB), name="static")
+
+
+@app.get("/about")
+def about():
+    """2쪽 설명자료 (site/index.html)."""
+    p = ROOT / "site" / "index.html"
+    if not p.exists():
+        raise HTTPException(404, "설명자료가 없습니다.")
+    return HTMLResponse(p.read_text(encoding="utf-8"))
 
 
 @app.get("/")

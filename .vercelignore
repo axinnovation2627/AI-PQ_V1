@@ -1,5 +1,12 @@
-# 버셀에는 설명자료 페이지와 비밀번호 화면만 올린다 (소스코드는 깃허브에만)
+# 버셀에는 체험판 실행에 필요한 것만 올린다
 /*
+!/api
+!/public
+!/pqweb
+!/criteria
+!/demo
 !/site
 !/middleware.js
 !/vercel.json
+!/requirements.txt
+/criteria/backup

@@ -2,5 +2,12 @@
   "framework": null,
   "buildCommand": "",
   "installCommand": "",
-  "outputDirectory": "site"
+  "outputDirectory": "public",
+  "rewrites": [{ "source": "/(.*)", "destination": "/api/index" }],
+  "functions": {
+    "api/index.py": {
+      "includeFiles": "{pqweb/**,criteria/*.yaml,demo/**,site/**}",
+      "maxDuration": 60
+    }
+  }
 }

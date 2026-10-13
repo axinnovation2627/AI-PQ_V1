@@ -26,8 +26,13 @@ function td(tr, v, cls) { const c = document.createElement("td"); text(c, v ?? "
 async function loadConfig() {
   const c = await api("/api/config");
   text($("#crit"), `${c.criteria} · 판독 모델 ${c.model}`);
-  $("#key-warn").hidden = c.gemini_ready;
+  $("#key-warn").hidden = c.gemini_ready || c.demo;
   $("#btn-start").disabled = !c.gemini_ready;
+  if (c.demo) {
+    $("#demo-note").hidden = false;
+    $("#btn-new").disabled = true;
+    $("#btn-new").title = "체험판에서는 PDF 업로드를 할 수 없습니다";
+  }
 }
 
 async function loadList() {

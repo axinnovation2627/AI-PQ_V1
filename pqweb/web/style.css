@@ -376,3 +376,8 @@ details.adv[open] summary { margin-bottom: 8px; }
 .ax-w { grid-column: 3; font-size: 11px; color: var(--muted); }
 .cc-verdict .vf { font-size: 11.5px; }
 @media (max-width: 1300px) { .cc-left { grid-template-columns: 100px minmax(0, 1fr); } .cc-verdict { grid-column: 1 / -1; border-left: 0; border-top: 1px dashed var(--line); } }
+
+/* 체험판 안내 띠 */
+.demo-note { margin: 0; padding: 9px 24px; background: #FFF4D6; border-bottom: 1px solid #E9C46A; color: #5B4300; font-size: 13.5px; }
+.demo-note b { margin-right: 6px; }
+.demo-note a { margin-left: 8px; color: #1F4E8C; font-weight: 600; }
